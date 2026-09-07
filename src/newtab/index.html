@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <!--
+      `interactive-widget=resizes-content` makes the on-screen keyboard shrink
+      the layout instead of covering the caret and the footer; `viewport-fit`
+      lets the page reach under notches, and the CSS pads the safe areas back.
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <title>Scratchpad</title>
+    <link rel="stylesheet" href="./newtab.css" />
+  </head>
+  <body>
+    <!--
+      The shell around the editor is static markup, so the rail, the bars and
+      the page's own colours are painted before any module runs. The editing
+      surface itself is ByteMD's and is mounted into `#editor` by `main.ts`.
+    -->
+    <div class="shell">
+      <main class="main">
+        <nav class="rail" id="rail" aria-label="drafts"></nav>
+
+        <div class="column">
+          <header class="topbar" id="topbar">
+            <button type="button" class="topbar__action" data-action="rail"></button>
+            <button type="button" class="topbar__action" data-action="mode"></button>
+          </header>
+          <div class="editor" id="editor"></div>
+          <footer class="footer" id="footer"></footer>
+        </div>
+      </main>
+
+      <section class="search" id="search" hidden aria-label="search drafts"></section>
+    </div>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

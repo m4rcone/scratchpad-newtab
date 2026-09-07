@@ -1,0 +1,43 @@
+/**
+ * Every piece of UI copy lives here, so translating is a one-file change.
+ * Shortcut labels follow the OS, and disappear where there is no keyboard.
+ */
+import { isTouch, shortcut } from './platform.ts';
+
+const hint = (key: string, shift = false) => (isTouch ? '' : ` ${shortcut(key, shift)}`);
+
+export const strings = {
+  emptyHint: 'write or paste',
+  untitled: 'untitled',
+  now: 'now',
+  today: 'today',
+  yesterday: 'yesterday',
+  earlier: 'earlier',
+  newDraft: `new draft${hint('D', true)}`,
+  drafts: (count: number) =>
+    `${count} ${count === 1 ? 'draft' : 'drafts'}${isTouch ? ' · search' : ` ·${hint('F', true)}`}`,
+  railEmpty: 'no drafts yet',
+  draftsButton: 'drafts',
+  splitView: 'split view',
+  writeOnly: 'write only',
+  close: 'close',
+  searchPlaceholder: 'search your drafts',
+  searchHelp: '↑↓ move · enter open · esc close',
+  searchCount: (shown: number, total: number) => `${shown} of ${total}`,
+  searchEmpty: 'nothing matches',
+  words: (count: number) => `${count} ${count === 1 ? 'word' : 'words'}`,
+  saved: isTouch ? 'saved' : `saved ·${hint('/')} splits the preview`,
+  saveFailed: 'could not save · still trying',
+  splitting: isTouch ? 'split view' : `split view ·${hint('/')} closes it`,
+  copy: 'copy',
+  export: 'export',
+  delete: 'delete',
+  themeDark: 'dark',
+  themeLight: 'light',
+  copied: 'copied to the clipboard',
+  exported: (name: string) => `exported as ${name}`,
+  deleteConfirm: isTouch
+    ? 'delete this draft? tap delete again to confirm'
+    : 'delete this draft? enter confirms · esc cancels',
+  deleted: 'draft deleted',
+};

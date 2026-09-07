@@ -1,0 +1,511 @@
+/*
+ * Palette and typography follow the product prototype. Dark is the default;
+ * light comes from the system unless a choice is pinned on <html data-theme>.
+ * One layout: a rail beside the column on wide screens, and the same rail as
+ * an overlay under a top bar on narrow ones.
+ */
+:root {
+  --bg: #0f0f10;
+  --ink: #e8e6e2;
+  --muted: #9a968e;
+  --mark: #7c7972;
+  --hair: #26262a;
+  --accent: #86a9ea;
+  --code: #c9b48a;
+  --code-bg: #16161a;
+  --selection: rgba(134, 169, 234, 0.14);
+
+  --mono:
+    ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --editor-size: 15px;
+  --editor-line: 1.7;
+  --ui-size: 12.5px;
+  --measure: 72ch;
+  --gutter: 56px;
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    --bg: #fbfaf8;
+    --ink: #1a1a1c;
+    --muted: #5f5c56;
+    --mark: #6e6b64;
+    --hair: #e2dfd8;
+    --accent: #2f5fbe;
+    --code: #8a6d2f;
+    --code-bg: #f2f0ea;
+    --selection: rgba(47, 95, 190, 0.1);
+    color-scheme: light;
+  }
+}
+
+:root[data-theme='light'] {
+  --bg: #fbfaf8;
+  --ink: #1a1a1c;
+  --muted: #5f5c56;
+  --mark: #6e6b64;
+  --hair: #e2dfd8;
+  --accent: #2f5fbe;
+  --code: #8a6d2f;
+  --code-bg: #f2f0ea;
+  --selection: rgba(47, 95, 190, 0.1);
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* A `display` rule outranks the hidden attribute — say it once, for everyone. */
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  -webkit-text-size-adjust: 100%;
+}
+
+::selection {
+  background: var(--selection);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.shell {
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+/* ---------- rail ---------- */
+
+.rail {
+  width: 240px;
+  flex: none;
+  padding: 40px 0 0 var(--safe-left);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  font-size: var(--ui-size);
+}
+
+.rail__list {
+  display: flex;
+  flex-direction: column;
+}
+
+.rail__group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 18px;
+}
+
+.rail__label,
+.rail__empty {
+  color: var(--mark);
+  padding: 0 24px 12px;
+}
+
+.rail__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 24px;
+  border-left: 3px solid transparent;
+}
+
+.rail__row.is-active {
+  padding-left: 21px;
+  border-left-color: var(--accent);
+}
+
+.rail__title {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rail__row.is-active .rail__title {
+  color: var(--ink);
+}
+
+.rail__time {
+  color: var(--mark);
+  flex: none;
+}
+
+.rail__foot {
+  margin-top: auto;
+  padding: 12px 24px calc(20px + var(--safe-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--mark);
+}
+
+/* Closing is for the overlay: on a wide screen the rail never goes away. */
+.rail__close {
+  display: none;
+}
+
+/* ---------- top bar (narrow screens only) ---------- */
+
+.topbar {
+  display: none;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 var(--gutter);
+  min-height: 44px;
+  border-bottom: 1px solid var(--hair);
+  color: var(--muted);
+  font-size: var(--ui-size);
+}
+
+.topbar__action {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+/* ---------- editor ---------- */
+
+.column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/*
+ * The host ByteMD mounts into. It has to be a sized flex child: ByteMD's own
+ * root fills its parent and scrolls its panes internally, so the page itself
+ * never scrolls and the footer stays put. `bytemd.css` dresses what goes in.
+ */
+.editor {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+/* ---------- footer ---------- */
+
+.footer {
+  border-top: 1px solid var(--hair);
+  padding: 14px calc(var(--gutter) + var(--safe-right)) calc(14px + var(--safe-bottom))
+    calc(var(--gutter) + var(--safe-left));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  color: var(--muted);
+  font-size: var(--ui-size);
+}
+
+.footer__status {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.footer__actions {
+  display: flex;
+  gap: 24px;
+  flex: none;
+}
+
+.footer__action.is-armed {
+  color: var(--accent);
+}
+
+/* ---------- search ---------- */
+
+.search {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: var(--bg);
+  padding: 40px calc(var(--gutter) + var(--safe-right)) 0
+    calc(var(--gutter) + var(--safe-left));
+  display: flex;
+  /*
+   * Centred across, anchored to the top. Centring the column vertically too
+   * would move the input under the writer's hands on every keystroke, since
+   * the list below it grows and shrinks as the query narrows.
+   */
+  justify-content: center;
+  min-height: 0;
+}
+
+.search__col {
+  max-width: var(--measure);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.search__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--hair);
+}
+
+.search__slash,
+.search__input {
+  font-family: var(--mono);
+  font-size: 21px;
+}
+
+.search__slash {
+  color: var(--mark);
+}
+
+.search__input {
+  width: 100%;
+  color: var(--ink);
+  background: transparent;
+  border: none;
+  outline: none;
+  caret-color: var(--accent);
+  border-radius: 0;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.search__input::placeholder {
+  color: var(--mark);
+}
+
+.search__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  padding-top: 8px;
+  color: var(--mark);
+  font-size: var(--ui-size);
+}
+
+.search__count {
+  margin-right: auto;
+}
+
+/* The keyboard hint and the close button trade places with the screen size. */
+.search__close {
+  display: none;
+}
+
+.search__results {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: calc(40px + var(--safe-bottom));
+}
+
+.search__empty {
+  color: var(--mark);
+  font-size: var(--ui-size);
+  padding: 10px 0 10px 20px;
+}
+
+.result {
+  display: block;
+  width: 100%;
+  padding: 10px 0 10px 20px;
+  border-left: 3px solid transparent;
+}
+
+.result.is-active {
+  padding-left: 17px;
+  border-left-color: var(--accent);
+}
+
+.result__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: var(--ui-size);
+}
+
+.result.is-active .result__head {
+  color: var(--ink);
+}
+
+.result__time {
+  color: var(--mark);
+  flex: none;
+}
+
+.result__snippet {
+  display: block;
+  font-family: var(--mono);
+  font-size: 13.5px;
+  color: var(--muted);
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- hover: only where a pointer can hover ---------- */
+
+@media (hover: hover) {
+  .rail__action:hover,
+  .topbar__action:hover {
+    color: var(--muted);
+  }
+
+  .footer__action:hover {
+    color: var(--ink);
+  }
+}
+
+/* ---------- narrow screens ---------- */
+
+@media (max-width: 720px) {
+  :root {
+    /* 16px is the size below which a phone zooms into a focused field. */
+    --editor-size: 16px;
+    --gutter: 16px;
+  }
+
+  .topbar {
+    display: flex;
+    padding-left: calc(var(--gutter) + var(--safe-left));
+    padding-right: calc(var(--gutter) + var(--safe-right));
+  }
+
+  .topbar__action {
+    color: var(--ink);
+  }
+
+  /* The rail becomes a sheet over the column, opened from the top bar. */
+  .rail {
+    display: none;
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    width: 100%;
+    background: var(--bg);
+    padding: 20px var(--safe-right) 0 var(--safe-left);
+  }
+
+  .rail.is-open {
+    display: flex;
+  }
+
+  .rail__label,
+  .rail__empty {
+    padding-left: var(--gutter);
+    padding-right: var(--gutter);
+  }
+
+  .rail__row {
+    padding: 12px var(--gutter);
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .rail__row.is-active {
+    padding-left: calc(var(--gutter) - 3px);
+  }
+
+  .rail__foot {
+    padding-left: var(--gutter);
+    padding-right: var(--gutter);
+    gap: 0;
+    border-top: 1px solid var(--hair);
+  }
+
+  .rail__action,
+  .rail__close {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .footer {
+    padding-top: 8px;
+    padding-bottom: calc(8px + var(--safe-bottom));
+    gap: 12px;
+  }
+
+  .footer__actions {
+    gap: 16px;
+  }
+
+  .footer__action {
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+  }
+
+  .search {
+    padding-top: 20px;
+  }
+
+  .search__slash,
+  .search__input {
+    font-size: 18px;
+  }
+
+  .search__help {
+    display: none;
+  }
+
+  .search__close {
+    display: block;
+    color: var(--ink);
+    min-height: 32px;
+  }
+
+  .result {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    min-height: 44px;
+  }
+}

@@ -1,0 +1,54 @@
+name: Release
+
+# Tag `vX.Y.Z` and this packs the extension the way the Chrome Web Store wants
+# it — a zip of the built `dist/`, without the sourcemaps, which are a local
+# debugging aid — and attaches it to the GitHub release.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    name: build and attach the zip
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Check the tag matches the version in both manifests
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          manifest="$(node -p "require('./dist/manifest.json').version")"
+          package="$(node -p "require('./package.json').version")"
+          echo "tag=$tag  manifest=$manifest  package=$package"
+          if [ "$tag" != "$manifest" ] || [ "$tag" != "$package" ]; then
+            echo "::error::the tag and the two version fields must agree"
+            exit 1
+          fi
+
+      - name: Zip the unpacked extension
+        run: |
+          find dist -name '*.map' -delete
+          cd dist && zip -qr "../scratchpad-${GITHUB_REF_NAME}.zip" .
+
+      # The gh CLI ships on the runner, so the release needs no third-party action.
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "scratchpad-${GITHUB_REF_NAME}.zip" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes

@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: lint, types and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Formatting
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Types
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test
+
+      - name: Extension build
+        run: npm run build
+
+      - name: Check the manifest made it into dist
+        run: test -f dist/manifest.json && test -f dist/newtab/index.html
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unpacked-extension
+          path: dist
+          if-no-files-found: error

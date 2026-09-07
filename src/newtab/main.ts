@@ -1,0 +1,326 @@
+/**
+ * New tab page: wiring only.
+ *
+ * Order still matters, but it no longer buys the first character: ByteMD's
+ * editor is a component, so it exists once its module has run. What is kept is
+ * that nothing waits on IndexedDB — the editor is mounted and focused before
+ * the disk is asked, and whatever gets typed while it answers survives (see
+ * `store.load`).
+ */
+import 'bytemd/dist/index.css';
+import './bytemd.css';
+
+import { createEditor } from '../app/editor.ts';
+import { createFooter } from '../app/footer.ts';
+import { createRail } from '../app/rail.ts';
+import { createSearch, searchResults } from '../app/search.ts';
+import { createStore } from '../app/store.ts';
+import type { State } from '../app/store.ts';
+import { slugOf } from '../app/model.ts';
+import { isMod } from '../app/platform.ts';
+import { strings } from '../app/strings.ts';
+import { applyTheme, bootTheme, effectiveTheme } from '../app/theme.ts';
+import { indexedDbStore } from '../storage/indexeddb.ts';
+import { prefsStore } from '../storage/prefs.ts';
+import type { Draft } from '../storage/types.ts';
+
+const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
+
+const topbarEl = $('topbar');
+const railEl = $('rail');
+const footerEl = $('footer');
+const searchEl = $('search');
+const editorEl = $('editor');
+
+// A pinned theme is known synchronously, so the first frame is already right —
+// and so is the palette mermaid bakes into the diagrams it draws.
+const theme = bootTheme();
+applyTheme(theme);
+
+const store = createStore(indexedDbStore(), prefsStore(), theme);
+const editor = createEditor(editorEl, store.state.mode, effectiveTheme(theme));
+editor.focus();
+
+const paintRail = createRail(railEl);
+const paintFooter = createFooter(footerEl);
+const search = createSearch(searchEl);
+const railButton = topbarEl.querySelector<HTMLElement>('[data-action="rail"]')!;
+const modeButton = topbarEl.querySelector<HTMLElement>('[data-action="mode"]')!;
+railButton.textContent = strings.draftsButton;
+
+let results: Draft[] = [];
+let lastRenderedId: string | null = null;
+let lastMode = store.state.mode;
+let lastTheme = effectiveTheme(theme);
+let searchWasOpen = false;
+
+function paint(state: State): void {
+  const active = store.active();
+
+  // Only reset the document when the draft itself changed: rewriting it on
+  // every keystroke would fight the caret and wipe CodeMirror's undo history.
+  if (active && active.id !== lastRenderedId) {
+    editor.setText(active.text, active.caret);
+    lastRenderedId = active.id;
+  }
+  if (!active && lastRenderedId) {
+    editor.setText('');
+    lastRenderedId = null;
+  }
+
+  searchEl.hidden = !state.searchOpen;
+  const wasHidden = editorEl.hidden;
+  editorEl.hidden = state.searchOpen;
+  // Coming back from search, the editor has just regained a size. Anything
+  // `setText` wrote above landed while it had none, so CodeMirror is asked to
+  // measure again now — synchronously, so the draft is right on the same frame
+  // it reappears rather than a blink later.
+  if (wasHidden && !editorEl.hidden) editor.refresh();
+
+  if (state.searchOpen) {
+    results = searchResults(state);
+    search.render(state, results);
+    if (!searchWasOpen) search.focus();
+  }
+  searchWasOpen = state.searchOpen;
+
+  if (state.mode !== lastMode) {
+    lastMode = state.mode;
+    editor.setMode(state.mode);
+  }
+
+  applyTheme(state.theme);
+  const nowTheme = effectiveTheme(state.theme);
+  if (nowTheme !== lastTheme) {
+    lastTheme = nowTheme;
+    editor.setTheme(nowTheme);
+  }
+
+  modeButton.textContent = state.mode === 'write' ? strings.splitView : strings.writeOnly;
+  paintRail(state);
+  paintFooter(state, editor.getText());
+}
+
+store.subscribe(paint);
+
+editor.onInput((text, caret) => store.write(text, caret));
+editor.onCaret((caret) => store.moveCaret(caret));
+// Coming back to the text means the delete was not meant: enter must type a
+// newline again, not confirm.
+editor.onFocus(() => store.cancelDelete());
+
+// ---------- actions ----------
+
+async function copyAll(): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(editor.getText());
+    store.flash(strings.copied);
+  } catch {
+    // Clipboard denied: fall back to the selection, which always works.
+    editor.focus();
+    document.execCommand('selectAll');
+  }
+}
+
+function exportDraft(): void {
+  const text = editor.getText();
+  const name = `${slugOf(text)}.md`;
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/markdown' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  link.click();
+  // Revoking in the same tick can cancel the download it just started.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  store.flash(strings.exported(name));
+}
+
+function deleteDraft(): void {
+  if (store.requestDelete() === 'deleted') {
+    store.flash(strings.deleted);
+    lastRenderedId = null;
+    editor.focus();
+  }
+}
+
+function toggleTheme(): void {
+  store.setTheme(effectiveTheme(store.state.theme) === 'dark' ? 'light' : 'dark');
+}
+
+function toggleMode(): void {
+  store.toggleMode();
+  if (store.state.mode === 'write') editor.focus();
+}
+
+function openDraft(id: string): void {
+  store.open(id);
+  editor.focus();
+}
+
+function createDraft(): void {
+  store.create();
+  editor.focus();
+}
+
+function closeSearch(): void {
+  store.setSearch(false);
+  editor.focus();
+}
+
+// ---------- events ----------
+
+const actionOf = (event: Event): string | undefined =>
+  (event.target as HTMLElement).closest<HTMLElement>('[data-action]')?.dataset.action;
+
+topbarEl.addEventListener('click', (event) => {
+  const action = actionOf(event);
+  if (action === 'rail') store.setRail(!store.state.railOpen);
+  else if (action === 'mode') toggleMode();
+});
+
+railEl.addEventListener('click', (event) => {
+  const target = (event.target as HTMLElement).closest<HTMLElement>(
+    '[data-id],[data-action]',
+  );
+  if (!target) return;
+  if (target.dataset.id) openDraft(target.dataset.id);
+  else if (target.dataset.action === 'new') createDraft();
+  else if (target.dataset.action === 'search') store.setSearch(true);
+  else if (target.dataset.action === 'close') store.setRail(false);
+});
+
+footerEl.addEventListener('click', (event) => {
+  const action = actionOf(event);
+  if (action === 'copy') void copyAll();
+  else if (action === 'export') exportDraft();
+  else if (action === 'delete') deleteDraft();
+  else if (action === 'theme') toggleTheme();
+});
+
+searchEl.addEventListener('input', (event) => {
+  const input = event.target as HTMLInputElement;
+  if (input.classList.contains('search__input')) store.setQuery(input.value);
+});
+
+searchEl.addEventListener('click', (event) => {
+  const id = (event.target as HTMLElement).closest<HTMLElement>('[data-id]')?.dataset.id;
+  if (id) openDraft(id);
+  else if (actionOf(event) === 'close') closeSearch();
+});
+
+searchEl.addEventListener('mousemove', (event) => {
+  const index = (event.target as HTMLElement).closest<HTMLElement>('[data-index]')
+    ?.dataset.index;
+  if (index !== undefined && store.state.cursor !== Number(index)) {
+    store.moveCursor(Number(index) - store.state.cursor, results.length);
+  }
+});
+
+// The footer's theme label — and mermaid's palette — follow the system when
+// nothing is pinned.
+window
+  .matchMedia('(prefers-color-scheme: light)')
+  .addEventListener('change', () => paint(store.state));
+
+/**
+ * Every chord here is deliberately one ByteMD and CodeMirror leave alone.
+ *
+ * Both register keymaps on the editor element, which sees a key before this
+ * listener does, so a shared chord is simply lost: ⌘K writes a link, ⌘⇧C
+ * writes a code block, ⌘D deletes a line. Rather than race them from the
+ * capture phase, the app moved to shift-chords none of them claim — ⌘⇧F,
+ * ⌘⇧D, ⌘⇧A — and CodeMirror lets those bubble up untouched. Adding a
+ * shortcut means checking both keymaps first; `⌘S` survives only because the
+ * `save` command CodeMirror binds it to is never defined.
+ */
+window.addEventListener('keydown', (event) => {
+  if (event.isComposing) return;
+  const state = store.state;
+  const key = event.key.toLowerCase();
+
+  if (isMod(event)) {
+    if (key === 'f' && event.shiftKey) {
+      event.preventDefault();
+      if (state.searchOpen) closeSearch();
+      else store.setSearch(true);
+    } else if (event.key === '/') {
+      // `/` sits on a shifted key on some layouts, so shift is not checked here.
+      event.preventDefault();
+      toggleMode();
+    } else if (key === 'd' && event.shiftKey) {
+      event.preventDefault();
+      createDraft();
+    } else if (key === 'a' && event.shiftKey) {
+      event.preventDefault();
+      void copyAll();
+    } else if (key === 's' && !event.shiftKey) {
+      event.preventDefault();
+      exportDraft();
+    }
+    return;
+  }
+
+  if (state.searchOpen) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeSearch();
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      store.moveCursor(1, results.length);
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      store.moveCursor(-1, results.length);
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      const chosen = results[store.state.cursor];
+      if (chosen) openDraft(chosen.id);
+    }
+    return;
+  }
+
+  if (state.railOpen && event.key === 'Escape') {
+    event.preventDefault();
+    store.setRail(false);
+    return;
+  }
+
+  if (state.pendingDelete) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      deleteDraft();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      store.cancelDelete();
+    }
+    return;
+  }
+
+  if (event.key === 'Escape' && state.mode === 'split') {
+    event.preventDefault();
+    toggleMode();
+  }
+});
+
+// Closing the tab right after a keystroke must not cost that keystroke.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    store.flushSync();
+    void store.flush();
+  }
+});
+window.addEventListener('pagehide', () => store.flushSync());
+
+// ---------- boot ----------
+
+void store
+  .load(() => editor.getText())
+  .then((active) => {
+    if (active) {
+      editor.setText(active.text, active.caret);
+      lastRenderedId = active.id;
+    }
+    paint(store.state);
+    editor.focus();
+  });
+
+paint(store.state);

@@ -1,0 +1,7 @@
+node_modules/
+dist/
+*.local
+.DS_Store
+
+# Produced by the release workflow when a `v*` tag is packed.
+scratchpad-v*.zip

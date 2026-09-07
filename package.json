@@ -1,0 +1,64 @@
+{
+  "name": "scratchpad",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A markdown scratchpad on the Chrome new tab (MV3). No account, no network, data stays on your machine.",
+  "keywords": [
+    "chrome-extension",
+    "manifest-v3",
+    "new-tab",
+    "markdown",
+    "scratchpad",
+    "notes",
+    "offline",
+    "bytemd"
+  ],
+  "homepage": "https://github.com/m4rcone/scratchpad-newtab#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/m4rcone/scratchpad-newtab.git"
+  },
+  "bugs": {
+    "url": "https://github.com/m4rcone/scratchpad-newtab/issues"
+  },
+  "author": "Marcone Boff (https://github.com/m4rcone)",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "icons": "node scripts/generate-icons.mjs",
+    "test": "node --test \"src/**/*.test.ts\""
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/chrome": "^0.1.28",
+    "@types/node": "^26.4.1",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.4",
+    "vite": "^7.1.14"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  },
+  "dependencies": {
+    "@bytemd/plugin-breaks": "^1.22.0",
+    "@bytemd/plugin-gemoji": "^1.22.0",
+    "@bytemd/plugin-gfm": "^1.22.0",
+    "@bytemd/plugin-highlight-ssr": "^1.22.0",
+    "@bytemd/plugin-math": "^1.22.0",
+    "@bytemd/plugin-mermaid": "^1.22.0",
+    "bytemd": "^1.22.0"
+  }
+}
