@@ -40,7 +40,7 @@ jobs:
       - name: Check the manifest made it into dist
         run: test -f dist/manifest.json && test -f dist/newtab/index.html
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: unpacked-extension
           path: dist
