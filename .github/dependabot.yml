@@ -6,8 +6,19 @@ updates:
       interval: monthly
     open-pull-requests-limit: 5
     groups:
+      # Minor and patch only. Grouping majors as well means one blocked
+      # dependency holds back every other update in the same PR — which is
+      # exactly what happened when TypeScript 7 came grouped with four
+      # unrelated bumps and `npm ci` refused the lot.
       dev-tooling:
         dependency-type: development
+        update-types: ['minor', 'patch']
+    ignore:
+      # `typescript-eslint` declares `typescript <6.1.0` as a peer, and no
+      # published version supports 7 yet, so a major bump here cannot install.
+      # Drop this entry once typescript-eslint catches up.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
   - package-ecosystem: github-actions
     directory: /
     schedule:
