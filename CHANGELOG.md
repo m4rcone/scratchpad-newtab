@@ -7,6 +7,12 @@ number is carried by `package.json` and by `public/manifest.json`.
 
 ## [Unreleased]
 
+### Changed
+
+- Write only lets the text fill the pane. The 72ch measure is what keeps the
+  two columns readable beside each other, so it now applies to split alone
+  instead of capping a single column that has nothing to balance against.
+
 ### Fixed
 
 - Mermaid flowcharts drawn while the preview was folded away came back as an

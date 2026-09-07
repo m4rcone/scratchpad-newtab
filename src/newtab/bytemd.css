@@ -114,6 +114,12 @@
   padding: 32px 0 40px;
 }
 
+/* The measure is what keeps the two columns readable beside each other. Write
+   only has no second column to balance against, so the text takes the pane. */
+.editor[data-mode='write'] .bytemd-editor .CodeMirror .CodeMirror-lines {
+  max-width: none;
+}
+
 .bytemd-editor .CodeMirror pre.CodeMirror-line,
 .bytemd-editor .CodeMirror pre.CodeMirror-line-like {
   padding: 0 var(--gutter);
