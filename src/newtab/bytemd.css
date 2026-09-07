@@ -198,6 +198,13 @@
   overflow-wrap: break-word;
 }
 
+/* Same reasoning as the writing column above: the measure is there to keep two
+   columns readable side by side, so ByteMD's preview only fills the pane the
+   way write only does. */
+.editor .bytemd:not(.bytemd-split) .bytemd-preview .markdown-body {
+  max-width: none;
+}
+
 .markdown-body > :first-child {
   margin-top: 0;
 }
