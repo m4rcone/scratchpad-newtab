@@ -67,6 +67,8 @@ export function createEditor(
   let text = '';
   let pendingCaret: number | null = null;
   let pendingFocus = false;
+  /** The palette the current plugin list was built with; `setMode` reuses it. */
+  let painted = theme;
   /**
    * True while `setText` is loading a draft. CodeMirror reports a `setValue`
    * as a change like any other, and reporting that back as input would save
@@ -166,12 +168,24 @@ export function createEditor(
     // again. Focusing happened to trigger that, which is why the stale text
     // used to correct itself the moment the writer clicked into it.
     refresh: () => cm?.refresh(),
+    // Folding the preview away is CSS, but unfolding it is not: mermaid lays
+    // diagrams out with `getBBox`, and a `display: none` preview measures zero.
+    // A flowchart drawn while folded comes back as a 16x16 box with
+    // `translate(undefined, NaN)` on its edge labels, and revealing it does not
+    // repair the SVG that was already written — only a fresh render does. So
+    // opening the preview re-renders the viewer, now that it has a size, with
+    // the same lever `setTheme` pulls below.
     setMode(next) {
+      const wasFolded = host.dataset.mode === 'write';
       host.dataset.mode = next;
+      if (next === 'split' && wasFolded) component.$set({ plugins: withBridge(painted) });
     },
     // Mermaid draws its colours into the SVG, so a theme change is a new plugin
     // list rather than a stylesheet swap.
-    setTheme: (next) => component.$set({ plugins: withBridge(next) }),
+    setTheme(next) {
+      painted = next;
+      component.$set({ plugins: withBridge(next) });
+    },
     onInput: (handler) => inputHandlers.push(handler),
     onCaret: (handler) => caretHandlers.push(handler),
     onFocus: (handler) => focusHandlers.push(handler),

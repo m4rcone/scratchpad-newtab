@@ -7,7 +7,13 @@ number is carried by `package.json` and by `public/manifest.json`.
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+
+- Mermaid flowcharts drawn while the preview was folded away came back as an
+  empty 16x16 box, with `translate(undefined, NaN)` on their edge labels, and
+  stayed broken once the preview was opened. Mermaid measures with `getBBox`,
+  which reads zero inside `display: none`, so opening the preview now
+  re-renders the viewer rather than only unfolding it in CSS.
 
 ## [0.1.0] — 2026-09-06
 
