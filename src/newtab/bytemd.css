@@ -79,8 +79,13 @@
  * view. It stays in `split` instead, and "write only" is expressed here by
  * folding the preview pane away. ByteMD writes the pane widths as inline
  * styles (`width:50%`), which is the one thing `!important` is for.
+ *
+ * The fold is scoped to `.bytemd-split` because ByteMD's toolbar carries its
+ * own write-only and preview-only buttons, and they drop that class instead of
+ * touching `data-mode`. Unscoped, preview only hid the editor while this hid
+ * the preview, and the page went blank.
  */
-.editor[data-mode='write'] .bytemd-preview {
+.editor[data-mode='write'] .bytemd-split .bytemd-preview {
   display: none !important;
 }
 
@@ -115,8 +120,10 @@
 }
 
 /* The measure is what keeps the two columns readable beside each other. Write
-   only has no second column to balance against, so the text takes the pane. */
-.editor[data-mode='write'] .bytemd-editor .CodeMirror .CodeMirror-lines {
+   only has no second column to balance against, so the text takes the pane —
+   whether the fold came from `data-mode` or from ByteMD's own write-only. */
+.editor[data-mode='write'] .bytemd-editor .CodeMirror .CodeMirror-lines,
+.editor .bytemd:not(.bytemd-split) .bytemd-editor .CodeMirror .CodeMirror-lines {
   max-width: none;
 }
 

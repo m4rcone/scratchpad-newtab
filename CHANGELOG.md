@@ -15,6 +15,11 @@ number is carried by `package.json` and by `public/manifest.json`.
 
 ### Fixed
 
+- Preview only showed a blank page. ByteMD's toolbar carries its own write-only
+  and preview-only buttons, which swap the root's `bytemd-split` class rather
+  than the app's `data-mode`; preview only hid the editor while the app's fold
+  was still hiding the preview. The fold now applies only while ByteMD is
+  showing both panes.
 - Mermaid flowcharts drawn while the preview was folded away came back as an
   empty 16x16 box, with `translate(undefined, NaN)` on their edge labels, and
   stayed broken once the preview was opened. Mermaid measures with `getBBox`,
